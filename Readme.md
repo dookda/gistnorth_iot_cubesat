@@ -15,7 +15,7 @@ pip install fastapi uvicorn ultralytics opencv-python numpy
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-#### 1.4 test application
+#### 1.4 test with curl
 ```bash
 curl -X POST "http://localhost:8000/predict" -H "Content-Type: application/json" -d '{"image": "base64_encoded_image_string"}'
 ```
@@ -54,4 +54,22 @@ https://ngrok.com/download
 #### create tunnel
 ```bash
 ngrok http 8000
+```
+
+### 3. setup Platformio
+#### 3.1 install Platformio extension in VSCode
+```bash
+code --install-extension platformio.platformio-ide
+```
+
+#### 3.2 config Platformio.ini
+```bash
+[env:esp32cam]
+platform = espressif32
+board = esp32cam
+framework = arduino
+
+monitor_speed = 115200
+upload_port = /dev/tty.usbserial-XXXX
+monitor_port = /dev/tty.usbserial-XXXX
 ```
