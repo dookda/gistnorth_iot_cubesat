@@ -1,4 +1,4 @@
-### 1.setup fastapi 
+### 1.setup Fastapi 
 #### 1.1 setup conda environment
 ```bash
 conda create --name fastapi python=3.8

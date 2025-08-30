@@ -4,6 +4,7 @@ from ultralytics import YOLO
 import numpy as np
 import cv2
 import time
+import os
 
 app = FastAPI()
 model = YOLO("yolo11n.pt")  # เปลี่ยนเป็นโมเดลที่ต้องการใช้
@@ -11,19 +12,24 @@ model = YOLO("yolo11n.pt")  # เปลี่ยนเป็นโมเดล�
 # create api to receive image and save to image folder
 
 
+if not os.path.exists("image"):
+    os.makedirs("image")
+
+
 @app.post("/upload")
 async def upload_image(request: Request):
     image_bytes = await request.body()
-    # add to image folder and ass suffix with timestamp
     timestamp = int(time.time())
-    with open(f"image/image_{timestamp}.jpg", "wb") as f:
+    file_path = f"image/image_{timestamp}.jpg"
+    with open(file_path, "wb") as f:
         f.write(image_bytes)
-    return {"message": "Image uploaded successfully"}
+    return {"message": "Image uploaded successfully at " + str(timestamp)}
 
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the YOLO object detection API"}
+    timestamp = int(time.time())
+    return {"message": "Welcome to the YOLO object detection API at " + str(timestamp)}
 
 
 def run_infer(image_bytes: bytes):
