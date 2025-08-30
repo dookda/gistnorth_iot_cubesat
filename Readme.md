@@ -1,25 +1,26 @@
-### setup environment
+### setup fastapi 
+#### setup conda environment
 ```bash
 conda create --name fastapi python=3.8
 conda activate fastapi
 ```
 
-### install libraries
+#### install libraries
 ```bash
 pip install fastapi uvicorn ultralytics opencv-python numpy
 ```
 
-### run application
+#### run application
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### test application
+#### test application
 ```bash
 curl -X POST "http://localhost:8000/predict" -H "Content-Type: application/json" -d '{"image": "base64_encoded_image_string"}'
 ```
 
-### test with RestClient
+#### test with RestClient
 ```bash
 ### upload image
 POST http://localhost:8000/upload
@@ -44,3 +45,13 @@ Accept: application/json
 < ./test2.jpg    
 ```
 
+### setup ngRok
+#### download and install ngrok
+```bash
+https://ngrok.com/download
+```
+
+#### create tunnel
+```bash
+ngrok http 8000
+```
