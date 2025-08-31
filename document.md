@@ -150,6 +150,10 @@ Accept: application/json
 | GND            | GND         |
 | 5V             | 5V          |
 
+
+<!-- show image from url -->
+<img src="https://mm.digikey.com/Volume0/opasdata/d220001/derivates/6/003/221/782/ESP32-CAM-2MB_web%28640x640%29.jpg?hidebanner=true" alt="Image from ESP32-CAM">
+
 - เข้าสู่โหมดแฟลช: กดปุ่ม GPIO0 หรือจัมเปอร์ IO0→GND แล้วกด RST (หรือจ่ายไฟใหม่)
 
 ### 3.2 ตั้งค่า Arduino IDE
