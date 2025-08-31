@@ -152,7 +152,7 @@ Accept: application/json
 
 
 <!-- show image from url -->
-<img src="https://mm.digikey.com/Volume0/opasdata/d220001/derivates/6/003/221/782/ESP32-CAM-2MB_web%28640x640%29.jpg?hidebanner=true" alt="Image from ESP32-CAM">
+<img src="https://mm.digikey.com/Volume0/opasdata/d220001/derivates/6/003/221/782/ESP32-CAM-2MB_web%28640x640%29.jpg" alt="Image from ESP32-CAM">
 
 - เข้าสู่โหมดแฟลช: กดปุ่ม GPIO0 หรือจัมเปอร์ IO0→GND แล้วกด RST (หรือจ่ายไฟใหม่)
 
