@@ -152,9 +152,7 @@ Accept: application/json
 
 
 <!-- show image from url -->
-![ESP32-CAM](./fastapi/images/ESP32-CAM.jpg "ESP32-CAM (640×640)")
 <img src="./fastapi/images/ESP32-CAM.jpg" alt="ESP32-CAM" width="320" />
-
 
 
 - เข้าสู่โหมดแฟลช: กดปุ่ม GPIO0 หรือจัมเปอร์ IO0→GND แล้วกด RST (หรือจ่ายไฟใหม่)
