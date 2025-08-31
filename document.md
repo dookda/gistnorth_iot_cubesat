@@ -51,14 +51,17 @@ python -c "import fastapi, cv2, ultralytics; print('OK')"
 
 ## 2. สร้าง FastAPI สำหรับเก็บข้อมูล image
 - สร้างโครงสร้างโฟลเดอร์: main.py, images/, static/
-```csharp
+```cpp
 fastapi/
 ├── main.py          # แอปหลัก
 ├── images/          # โฟลเดอร์เก็บภาพที่อัปโหลด
 ├── static/          # หน้าเว็บ front-end
 └── yolo11n.pt       # โมเดล YOLO ใช้วิเคราะห์รูป
 ```
-- ดาวน์โหลดโมเดล YOLO จาก [ที่นี่](https://github.com/AlexeyAB/darknet/releases)
+- สร้างโฟลเดอร์ images/ และ static/ เพื่อเก็บภาพและไฟล์เว็บสเตติก
+```bash
+mkdir images static
+```
 
 สร้างไฟล์ main.py ด้วยโค้ดดังนี้:
 ```python
@@ -81,38 +84,57 @@ def read_root():
 
 สร้าง API:
 
-- POST /upload รับและบันทึกรูป
+- รับและบันทึกรูป
+    - endpoint: POST /upload
 
 ```python
 @app.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
-    try:
-        with open(f"images/{file.filename}", "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        return {"filename": file.filename}
-    except Exception as e:
-        return {"error": str(e)}
-- GET /images คืนรายการไฟล์
+async def upload_image(request: Request):
+    image_bytes = await request.body()
+    timestamp = int(time.time())
+    file_path = f"images/image_{timestamp}.jpg"
+    with open(file_path, "wb") as f:
+        f.write(image_bytes)
+    return {"message": "Image uploaded successfully at " + str(timestamp)}
+
+```
+
+- คืนรายการไฟล์ทั้งหมดในโฟลเดอร์ images
+    - endpoint: GET /images
 
 ```python
 @app.get("/images")
 def list_images():
-    images = os.listdir("images")
-    return {"images": images}
+    print("dd")
+    image_files = os.listdir("images")
+    return {"images": image_files}
 ```
 
-- GET /infer/{image}?render=true|false วิเคราะห์วัตถุด้วย YOLO
-
-```python
-@app.get("/infer/{image}")
-def infer_image(image: str, render: bool = False):
-    # รัน YOLO บนภาพที่ระบุ
-    return {"image": image, "render": render}
+- รันเซิร์ฟเวอร์ด้วย 
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-- รันเซิร์ฟเวอร์ด้วย uvicorn main:app --reload --host 0.0.0.0 --port 8000
+- ทดลองอัพโหลดภาพผ่าน API ด้วย REST Client
+```bash
+### upload image
+POST http://localhost:8000/upload
+Content-Type: application/octet-stream
+Accept: application/json
 
-## 3. การใช้งาน ESP32‑CAM
+< ./test2.jpg
+
+```
+
+- ทดลองเรียกภาพ ด้วย REST Client
+```bash
+### list images
+GET http://localhost:8000/images
+Accept: application/json
+
+```
+
+### 2. การใช้งาน ESP32‑CAM
 ### 3.1 เชื่อมต่อฮาร์ดแวร์
 อุปกรณ์หลัก:
 - โมดูล ESP32‑CAM
@@ -265,16 +287,166 @@ void loop() {
 - อัปโหลดโค้ดไปยังบอร์ดและทดสอบผ่าน Serial Monitor
 
 
-## 4. สร้าง front‑end สำหรับเรียกดูภาพ
-สร้างหน้า static/index.html ใช้ Bootstrap จัดเลย์เอาต์
+## 4. การตรวจสอบวัตถุในภาพ
+- ดาวน์โหลดโมเดล YOLO จาก [ที่นี่](https://github.com/AlexeyAB/darknet/releases)
+- แตกไฟล์และวางโมเดลในโฟลเดอร์โปรเจกต์
 
-เขียนสคริปต์ JavaScript:
+- เรียกใช้งานโมเดล
+```python
+from fastapi import FastAPI, Request, Query, HTTPException
+from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+# เพิ่มการใช้งาน YOLO
+from ultralytics import YOLO
+import numpy as np
+import cv2
+import time
+import os
 
-loadImages() ดึงรายชื่อไฟล์จาก GET /images
 
-showImage(name) โหลดภาพผลลัพธ์จาก /infer/{name}?render=true
+model = YOLO("yolo11n.pt")  # เปลี่ยนเป็นโมเดลที่ต้องการใช้
 
-เปิดเบราว์เซอร์ที่ http://<ip>:8000/web/ เพื่อทดสอบการแสดงผล
+```
+
+- เขียน API วิเคราะห์วัตถุด้วย YOLO
+    - endpoint: GET /infer/{image}?render=true|false
+
+```python
+def run_infer_from_file(image_path: str):
+    """Load image from file and run inference"""
+    if not os.path.exists(image_path):
+        raise HTTPException(
+            status_code=404, detail=f"Image file not found: {image_path}")
+
+    img = cv2.imread(image_path)
+    if img is None:
+        raise HTTPException(
+            status_code=400, detail=f"Could not read image file: {image_path}")
+
+    results = model.predict(source=img, imgsz=640, conf=0.25, verbose=False)
+    return img, results[0]
+
+
+@app.get("/infer/{image_name}")
+async def infer_by_name(
+    image_name: str,
+    render: bool = Query(
+        False, description="true = ส่งคืนรูปภาพ JPEG ที่ตีกรอบ")
+):
+    image_path = os.path.join("images", image_name)
+    _, r = run_infer_from_file(image_path)
+
+    if render:
+        annotated = r.plot(line_width=2, labels=True, conf=True)
+        ok, buf = cv2.imencode(".jpg", annotated)
+        if not ok:
+            return Response(status_code=500, content="Failed to encode image")
+        return Response(
+            content=buf.tobytes(),
+            media_type="image/jpeg",
+            headers={"Content-Disposition": "inline; filename=annotated.jpg"}
+        )
+
+    # คืน JSON
+    dets = []
+    names = r.names
+    for b in r.boxes:
+        x1, y1, x2, y2 = map(float, b.xyxy[0].tolist())
+        cls_id = int(b.cls[0])
+        conf = float(b.conf[0])
+        dets.append({"bbox": [x1, y1, x2, y2], "cls_id": cls_id,
+                     "cls_name": names[cls_id], "conf": conf})
+    return JSONResponse({"detections": dets, "image_shape": r.orig_shape})
+
+```
+
+- ทดลองเรียกใช้ API ด้วย ResClient
+
+```bash
+### JSON response
+GET http://localhost:8000/infer/images.jpg
+
+### Rendered image response
+GET http://localhost:8000/infer/images.jpg?render=true
+```
+
+## 5.สร้าง front‑end สำหรับเรียกดูภาพ
+- สร้างหน้า static/index.html 
+- เพิ่ม Bootstrap 
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+        crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Image List</h5>
+                        <ul id="image-list">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-8">
+                <div class="card">
+                    <div class="card-body">
+                        <img id="selected-image" src="" alt="Selected Image" class="img-fluid">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    // เขียนฟังก์ชัน JavaScript สำหรับโหลดภาพ ตรงนี้
+</script>
+</html>
+```
+
+- เขียน function สำหรับแสดงชื่อภาพ ด้วย GET /images
+```js
+async function fetchImages() {
+        const response = await fetch("/images");
+        const data = await response.json();
+        const imageList = document.getElementById("image-list");
+        imageList.innerHTML = "";
+        data.images.forEach(image => {
+            console.log(image);
+
+            const li = document.createElement("li");
+            li.textContent = image;
+            li.onclick = () => selectImage(image);
+            imageList.appendChild(li);
+        });
+    }
+```
+
+- เขียน function สำหรับแสดงภาพจากการตรวจจับวัตถุ โดยโหลดภาพผลลัพธ์จากภาพ ด้วย GET /infer/{name}?render=true
+```js
+function selectImage(imageName) {
+        const selectedImage = document.getElementById("selected-image");
+        selectedImage.src = `/infer/${imageName}?render=true`;
+    }
+```
+- เรียกใช้งาน function  
+```js
+window.onload = fetchImages;
+```
+
+- เปิดเบราว์เซอร์ที่ http://<ip>:8000/web/ เพื่อทดสอบการแสดงผล
+
 
 สรุป
 Conda environment ช่วยให้ติดตั้งและจัดการ FastAPI + YOLO อย่างเป็นระบบ
