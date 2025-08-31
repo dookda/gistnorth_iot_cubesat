@@ -48,18 +48,72 @@ pip install ultralytics
 python -c "import fastapi, cv2, ultralytics; print('OK')"
 ```
 
-### 1.4 จัดการ environment ด้วยไฟล์ environment.yml (ทางเลือก)
-สร้างไฟล์บันทึกรายการแพ็กเกจ
 
-conda env export > environment.yml
-สร้าง environment จากไฟล์
-```bash
-conda env create -f environment.yml
+## 2. สร้าง FastAPI สำหรับเก็บข้อมูล image
+- สร้างโครงสร้างโฟลเดอร์: main.py, images/, static/
+```csharp
+fastapi/
+├── main.py          # แอปหลัก
+├── images/          # โฟลเดอร์เก็บภาพที่อัปโหลด
+├── static/          # หน้าเว็บ front-end
+└── yolo11n.pt       # โมเดล YOLO ใช้วิเคราะห์รูป
 ```
-ขั้นตอนนี้ช่วยให้ผู้เรียนทุกคนมีสภาพแวดล้อมเหมือนกัน ลดปัญหาความแตกต่างของเวอร์ชันและแพ็กเกจ
+- ดาวน์โหลดโมเดล YOLO จาก [ที่นี่](https://github.com/AlexeyAB/darknet/releases)
 
-## 2. การใช้งาน ESP32‑CAM
-### 2.1 เชื่อมต่อฮาร์ดแวร์
+สร้างไฟล์ main.py ด้วยโค้ดดังนี้:
+```python
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+import shutil
+import os
+
+app = FastAPI()
+
+app.mount("/web", StaticFiles(directory="static"), name="static")
+
+@app.get("/api")
+def read_root():
+    return {"Hello": "World"}
+```
+
+- เพิ่มฟังก์ชันเพื่ออัปโหลดและเก็บภาพ
+
+สร้าง API:
+
+- POST /upload รับและบันทึกรูป
+
+```python
+@app.post("/upload")
+async def upload_image(file: UploadFile = File(...)):
+    try:
+        with open(f"images/{file.filename}", "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return {"filename": file.filename}
+    except Exception as e:
+        return {"error": str(e)}
+- GET /images คืนรายการไฟล์
+
+```python
+@app.get("/images")
+def list_images():
+    images = os.listdir("images")
+    return {"images": images}
+```
+
+- GET /infer/{image}?render=true|false วิเคราะห์วัตถุด้วย YOLO
+
+```python
+@app.get("/infer/{image}")
+def infer_image(image: str, render: bool = False):
+    # รัน YOLO บนภาพที่ระบุ
+    return {"image": image, "render": render}
+```
+
+- รันเซิร์ฟเวอร์ด้วย uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+## 3. การใช้งาน ESP32‑CAM
+### 3.1 เชื่อมต่อฮาร์ดแวร์
 อุปกรณ์หลัก:
 - โมดูล ESP32‑CAM
 - USB‑to‑TTL (FTDI/CP2102/CH340)
@@ -73,9 +127,10 @@ conda env create -f environment.yml
 | U0T            | RX          |
 | GND            | GND         |
 | 5V             | 5V          |
-เข้าสู่โหมดแฟลช: กดปุ่ม GPIO0 หรือจัมเปอร์ IO0→GND แล้วกด RST (หรือจ่ายไฟใหม่)
 
-### 2.2 ตั้งค่า Arduino IDE
+- เข้าสู่โหมดแฟลช: กดปุ่ม GPIO0 หรือจัมเปอร์ IO0→GND แล้วกด RST (หรือจ่ายไฟใหม่)
+
+### 3.2 ตั้งค่า Arduino IDE
 - ติดตั้ง Arduino IDE ดาวน์โหลดจาก [เว็บไซต์ Arduino](https://www.arduino.cc/en/software)
 - เปิด Arduino IDE และไปที่ Preferences
 - เพิ่ม URL ของบอร์ด ESP32 ใน Additional Board Manager URLs
@@ -87,7 +142,7 @@ conda env create -f environment.yml
 - เลือกบอร์ด ESP32‑CAM จาก Tools > Board > ESP32 Arduino > AI Thinker ESP32-CAM
 - ตั้งค่าพอร์ต (Tools > Port) ให้ตรงกับพอร์ตที่เชื่อมต่อ USB‑TTL
 
-### 2.3 ทดลองเขียนโค้ด
+### 3.3 ทดลองเขียนโค้ด
 - เขียนโค้ด print hello ทุกๆ 30 วินาที
 ```cpp
 #include "esp_camera.h"
@@ -107,7 +162,7 @@ void loop() {
 ```
 - อัปโหลดโค้ดไปยังบอร์ดและทดสอบผ่าน Serial Monitor
 
-### 2.4 เขียนโค้ดถ่ายภาพ
+### 3.4 เขียนโค้ดถ่ายภาพ
 - เขียนโค้ดถ่ายภาพแล้วส่งผ่าน HTTP POST ไปยังเซิร์ฟเวอร์ (/upload)
 
 ```cpp
@@ -209,20 +264,6 @@ void loop() {
 ```
 - อัปโหลดโค้ดไปยังบอร์ดและทดสอบผ่าน Serial Monitor
 
-## 3. สร้าง FastAPI สำหรับเก็บข้อมูล image
-โครงสร้างโฟลเดอร์: main.py, images/, static/, โมเดล yolo11n.pt
-
-ภายใน environment ที่สร้างด้วย Conda ติดตั้งไลบรารีเพิ่มเติม (หากยังไม่ได้ติดตั้ง)
-
-สร้าง API:
-
-- POST /upload รับและบันทึกรูป
-
-- GET /images คืนรายการไฟล์
-
-- GET /infer/{image}?render=true|false วิเคราะห์วัตถุด้วย YOLO
-
-รันเซิร์ฟเวอร์ด้วย uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## 4. สร้าง front‑end สำหรับเรียกดูภาพ
 สร้างหน้า static/index.html ใช้ Bootstrap จัดเลย์เอาต์
