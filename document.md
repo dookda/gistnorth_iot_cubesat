@@ -1,4 +1,4 @@
-# คู่มืออบรม: ระบบเก็บภาพจาก ESP32‑CAM ด้วย FastAPI, YOLO และหน้าเว็บ
+# คู่มืออบรม: การใช้อุปกรณ์ ESP32-CAM และ Deep Learning สำหรับ CUBESAT
 ## 1. เตรียม python environtment ด้วย Conda
 การใช้ Conda ช่วยให้จัดการแพ็กเกจและสภาพแวดล้อมของ Python ได้สะดวก โดยเฉพาะเมื่อต้องใช้ไลบรารีที่มีการอ้างอิงซับซ้อน เช่น FastAPI และ YOLO (Ultralytics)
 
