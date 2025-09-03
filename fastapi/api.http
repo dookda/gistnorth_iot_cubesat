@@ -15,3 +15,7 @@ GET http://localhost:8000/infer/images.jpg
 
 ### Rendered image response
 GET http://localhost:8000/infer/images.jpg?render=true
+
+### get with header for api key
+GET https://api.openaq.org/v3/locations/2178
+X-API-Key: 91946d8c9baab82d4509077be0f7d1919ddacff90fd121c457af96841edb4f35
